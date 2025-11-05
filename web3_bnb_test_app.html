@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web3 BNB Chain Test App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      background-color: #f0b90b;
+      color: black;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #d4a007;
+    }
+    p {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Simple Web3 BNB Chain Test App</h2>
+  <button id="connectBtn">Connect Wallet</button>
+  <p id="wallet"></p>
+  <p id="balance"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  <script>
+    const connectBtn = document.getElementById("connectBtn");
+    const walletDisplay = document.getElementById("wallet");
+    const balanceDisplay = document.getElementById("balance");
+
+    const BNB_PARAMS = {
+      chainId: "0x38", // BSC Mainnet
+      chainName: "Binance Smart Chain",
+      nativeCurrency: {
+        name: "BNB",
+        symbol: "BNB",
+        decimals: 18,
+      },
+      rpcUrls: ["https://bsc-dataseed.binance.org/"],
+      blockExplorerUrls: ["https://bscscan.com/"],
+    };
+
+    async function switchToBSC() {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: BNB_PARAMS.chainId }],
+        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [BNB_PARAMS],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        alert("MetaMask not found! Please install it first.");
+        return;
+      }
+
+      try {
+        await switchToBSC();
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        const address = accounts[0];
+        walletDisplay.textContent = "Wallet: " + address;
+
+        const balance = await provider.getBalance(address);
+        balanceDisplay.textContent =
+          "Balance: " + ethers.formatEther(balance) + " BNB";
+      } catch (err) {
+        console.error(err);
+        alert("Connection failed!");
+      }
+    }
+
+    connectBtn.onclick = connectWallet;
+
+    // Auto connect if already authorized
+    window.addEventListener("load", async () => {
+      if (window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            await switchToBSC();
+            connectWallet();
+          }
+        } catch (err) {
+          console.warn("Auto-connect skipped:", err);
+        }
+      }
+    });
+  </script>
+</body>
+</html>
